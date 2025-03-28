@@ -15,27 +15,20 @@ if (!fs.existsSync(PRODUCTS_FILE)) {
     fs.writeFileSync(PRODUCTS_FILE, "[]");
 }
 
-// Assurer que le dossier /uploads/ existe
-const UPLOADS_DIR = "uploads";
-if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR);
-}
-
-// Configuration du stockage des images
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOADS_DIR);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + "-" + file.originalname);
-    }
-});
+// Configuration du stockage des images en mémoire
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Charger les produits depuis le fichier JSON
 const loadProducts = () => {
     try {
-        return JSON.parse(fs.readFileSync(PRODUCTS_FILE, "utf8"));
+        const products = JSON.parse(fs.readFileSync(PRODUCTS_FILE, "utf8"));
+        return products.map(product => {
+            if (product.image) {
+                product.image = `data:image/png;base64,${product.image}`;
+            }
+            return product;
+        });
     } catch (error) {
         console.error("Erreur lors du chargement des produits :", error);
         return [];
@@ -45,7 +38,13 @@ const loadProducts = () => {
 // Enregistrer les produits dans le fichier JSON
 const saveProducts = (products) => {
     try {
-        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+        const productsToSave = products.map(product => {
+            if (product.image && product.image.startsWith("data:image/png;base64,")) {
+                product.image = product.image.split(",")[1];
+            }
+            return product;
+        });
+        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(productsToSave, null, 2));
     } catch (error) {
         console.error("Erreur lors de l'enregistrement des produits :", error);
     }
@@ -63,7 +62,7 @@ app.post("/products", upload.single("image"), (req, res) => {
         id: products.length + 1,
         nom: req.body.nom,
         description: req.body.description,
-        image: req.file ? `/uploads/${req.file.filename}` : null,
+        image: req.file ? req.file.buffer.toString("base64") : null,
         categorie: req.body.categorie,
         prix: req.body.prix
     };
@@ -92,9 +91,6 @@ app.delete("/products/:id", (req, res) => {
     saveProducts(newProducts);
     res.json({ message: "Produit supprimé" });
 });
-
-// Servir les images statiques
-app.use("/uploads", express.static(path.join(__dirname, UPLOADS_DIR)));
 
 // Lancer le serveur
 app.listen(PORT, () => console.log(`✅ Serveur en ligne sur http://localhost:${PORT}`));
