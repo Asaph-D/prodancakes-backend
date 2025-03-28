@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "nom": "croquete",
+    "description": "les croquettes ",
+    "image": "/uploads/1743161298067-maxresdefault.jpg",
+    "categorie": "male",
+    "prix": "9"
+  }
+]
