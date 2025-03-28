@@ -66,19 +66,29 @@ app.post("/products", upload.single("image"), (req, res) => {
         categorie: req.body.categorie,
         prix: req.body.prix
     };
+    console.log('New product added:', newProduct);
     products.push(newProduct);
     saveProducts(products);
     res.status(201).json(newProduct);
 });
 
 // Modifier un produit
-app.put("/products/:id", (req, res) => {
+app.put("/products/:id", upload.single("image"), (req, res) => {
     let products = loadProducts();
     const productIndex = products.findIndex(p => p.id === parseInt(req.params.id));
     if (productIndex !== -1) {
-        products[productIndex] = { ...products[productIndex], ...req.body };
+        const updatedProduct = {
+            ...products[productIndex],
+            nom: req.body.nom,
+            description: req.body.description,
+            image: req.file ? req.file.buffer.toString("base64") : products[productIndex].image,
+            categorie: req.body.categorie,
+            prix: req.body.prix
+        };
+        console.log('Product updated:', updatedProduct);
+        products[productIndex] = updatedProduct;
         saveProducts(products);
-        res.json(products[productIndex]);
+        res.json(updatedProduct);
     } else {
         res.status(404).json({ message: "Produit non trouvé" });
     }
